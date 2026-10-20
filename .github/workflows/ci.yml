@@ -92,7 +92,7 @@ jobs:
       - run: gradle --no-daemon -p backend :api:installDist
       - name: Start the API
         run: |
-          DEV_AUTH=true SEED_DEMO=true TRAINER_MODE=local ARTIFACT_DIR=build/e2e-artifacts \
+          DEV_AUTH=true SEED_DEMO=true TRAINER_MODE=local ARTIFACT_DIR=build/e2e-artifacts CORS_ORIGINS=http://localhost:4173 \
             nohup backend/api/build/install/api/bin/api > api.log 2>&1 &
           for i in $(seq 1 60); do curl -sf localhost:8080/ready && break; sleep 2; done
           curl -sf localhost:8080/ready || { tail -50 api.log; exit 1; }
@@ -104,7 +104,11 @@ jobs:
       - working-directory: frontend
         run: CI=1 ../.github/run.sh npx playwright test --reporter=line
       - if: failure()
-        run: tail -100 api.log
+        run: |
+          tail -100 api.log
+          ctx=$(ls frontend/test-results/*/error-context.md 2>/dev/null | head -1)
+          msg=$( { grep -iE 'error|exception|warn' api.log | grep -v DEBUG | tail -15; echo '--- page ---'; [ -n "$ctx" ] && head -40 "$ctx"; } | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          echo "::error title=e2e diagnostics::$msg"
 
   infra:
     runs-on: ubuntu-latest

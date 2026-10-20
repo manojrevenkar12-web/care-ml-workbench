@@ -55,7 +55,7 @@ module "eks" {
   enable_irsa                              = true
   enable_cluster_creator_admin_permissions = true
 
-  create_kms_key            = false
+  create_kms_key = false
   cluster_encryption_config = {
     provider_key_arn = aws_kms_key.phi.arn
     resources        = ["secrets"]
@@ -64,7 +64,7 @@ module "eks" {
   cluster_addons = {
     coredns    = {}
     kube-proxy = {}
-    vpc-cni    = {
+    vpc-cni = {
       # enforce Kubernetes NetworkPolicies (deploy/k8s/base/networkpolicies.yaml)
       configuration_values = jsonencode({ enableNetworkPolicy = "true" })
     }
@@ -75,10 +75,10 @@ module "eks" {
 
   eks_managed_node_groups = {
     general = {
-      instance_types        = ["m6i.xlarge"]
-      min_size              = 2
-      max_size              = 6
-      desired_size          = 3
+      instance_types = ["m6i.xlarge"]
+      min_size       = 2
+      max_size       = 6
+      desired_size   = 3
       block_device_mappings = {
         root = {
           device_name = "/dev/xvda"
@@ -95,7 +95,7 @@ module "efs_csi_irsa" {
 
   role_name             = "${local.name}-efs-csi"
   attach_efs_csi_policy = true
-  oidc_providers        = {
+  oidc_providers = {
     main = {
       provider_arn               = module.eks.oidc_provider_arn
       namespace_service_accounts = ["kube-system:efs-csi-controller-sa"]
@@ -297,7 +297,7 @@ module "api_irsa" {
 
   role_name        = "${local.name}-api"
   role_policy_arns = { app = aws_iam_policy.api.arn }
-  oidc_providers   = {
+  oidc_providers = {
     main = {
       provider_arn               = module.eks.oidc_provider_arn
       namespace_service_accounts = ["ml-app:api"]
@@ -311,7 +311,7 @@ module "etl_irsa" {
 
   role_name        = "${local.name}-etl"
   role_policy_arns = { app = aws_iam_policy.etl.arn }
-  oidc_providers   = {
+  oidc_providers = {
     main = {
       provider_arn               = module.eks.oidc_provider_arn
       namespace_service_accounts = ["ml-app:etl"]
