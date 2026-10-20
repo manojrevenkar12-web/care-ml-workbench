@@ -1,0 +1,25 @@
+model
+  schema 1.1
+
+type user
+
+type tenant
+  relations
+    define admin: [user]
+    define member: [user] or admin
+
+type project
+  relations
+    define tenant: [tenant]
+    define admin: [user] or admin from tenant
+    define reviewer: [user] or admin
+    define annotator: [user] or reviewer
+    define viewer: [user] or annotator or member from tenant
+    # break-glass access to original PHI: an explicit grant, and only for members of the tenant
+    define phi_viewer: [user] and member from tenant
+
+type dataset
+  relations
+    define project: [project]
+    define can_read: viewer from project
+    define can_train: reviewer from project

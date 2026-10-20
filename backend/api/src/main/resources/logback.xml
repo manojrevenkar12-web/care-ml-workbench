@@ -1,0 +1,15 @@
+<configuration>
+    <!-- JSON logs to stdout, collected by Grafana Alloy into Loki. Bodies are never logged. -->
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>request_id</includeMdcKeyName>
+            <includeMdcKeyName>trace_id</includeMdcKeyName>
+            <includeMdcKeyName>span_id</includeMdcKeyName>
+        </encoder>
+    </appender>
+    <logger name="io.netty" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+    <root level="INFO">
+        <appender-ref ref="JSON"/>
+    </root>
+</configuration>

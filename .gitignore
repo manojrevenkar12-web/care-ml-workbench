@@ -1,0 +1,21 @@
+# build outputs
+build/
+.gradle/
+out/
+*.class
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+__pycache__/
+.pytest_cache/
+# local data and artifacts: never commit exports (they may contain PHI)
+data/
+artifacts/
+*.jsonl
+!trainer/tests/**/*.jsonl
+.terraform/
+*.tfstate*
+.terraform.lock.hcl
+.env

@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.1",
+  "type_definitions": [
+    { "type": "user" },
+    {
+      "type": "tenant",
+      "relations": {
+        "admin": { "this": {} },
+        "member": { "union": { "child": [{ "this": {} }, { "computedUserset": { "relation": "admin" } }] } }
+      },
+      "metadata": {
+        "relations": {
+          "admin": { "directly_related_user_types": [{ "type": "user" }] },
+          "member": { "directly_related_user_types": [{ "type": "user" }] }
+        }
+      }
+    },
+    {
+      "type": "project",
+      "relations": {
+        "tenant": { "this": {} },
+        "admin": { "union": { "child": [{ "this": {} }, { "tupleToUserset": { "tupleset": { "relation": "tenant" }, "computedUserset": { "relation": "admin" } } }] } },
+        "reviewer": { "union": { "child": [{ "this": {} }, { "computedUserset": { "relation": "admin" } }] } },
+        "annotator": { "union": { "child": [{ "this": {} }, { "computedUserset": { "relation": "reviewer" } }] } },
+        "viewer": {
+          "union": {
+            "child": [
+              { "this": {} },
+              { "computedUserset": { "relation": "annotator" } },
+              { "tupleToUserset": { "tupleset": { "relation": "tenant" }, "computedUserset": { "relation": "member" } } }
+            ]
+          }
+        },
+        "phi_viewer": {
+          "intersection": {
+            "child": [{ "this": {} }, { "tupleToUserset": { "tupleset": { "relation": "tenant" }, "computedUserset": { "relation": "member" } } }]
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "tenant": { "directly_related_user_types": [{ "type": "tenant" }] },
+          "admin": { "directly_related_user_types": [{ "type": "user" }] },
+          "reviewer": { "directly_related_user_types": [{ "type": "user" }] },
+          "annotator": { "directly_related_user_types": [{ "type": "user" }] },
+          "viewer": { "directly_related_user_types": [{ "type": "user" }] },
+          "phi_viewer": { "directly_related_user_types": [{ "type": "user" }] }
+        }
+      }
+    },
+    {
+      "type": "dataset",
+      "relations": {
+        "project": { "this": {} },
+        "can_read": { "tupleToUserset": { "tupleset": { "relation": "project" }, "computedUserset": { "relation": "viewer" } } },
+        "can_train": { "tupleToUserset": { "tupleset": { "relation": "project" }, "computedUserset": { "relation": "reviewer" } } }
+      },
+      "metadata": { "relations": { "project": { "directly_related_user_types": [{ "type": "project" }] } } }
+    }
+  ]
+}
