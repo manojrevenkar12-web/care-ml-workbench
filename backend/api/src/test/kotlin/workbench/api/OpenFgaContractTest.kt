@@ -60,6 +60,6 @@ class OpenFgaContractTest {
                 assertEquals(local.check(u, rel, "tenant:t1"), remote.check(u, rel, "tenant:t1"), "$u $rel tenant:t1"); cases++
             }
         }
-        assertEquals(126, cases)
+        assertEquals(98, cases) // 7 users × (5 relations × 2 projects + 2 dataset + 2 tenant)
     }
 }
