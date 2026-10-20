@@ -132,7 +132,7 @@ fun Application.module(app: App) {
         exception<IllegalArgumentException> { call, e -> call.respond(HttpStatusCode.BadRequest, errorBody("bad_request", e.message)) }
         exception<kotlinx.serialization.SerializationException> { call, _ -> call.respond(HttpStatusCode.BadRequest, errorBody("bad_request", "malformed JSON")) }
         exception<Throwable> { call, e ->
-            call.application.environment.log.errorBody("unhandled error", e)
+            call.application.environment.log.error("unhandled error", e)
             call.respond(HttpStatusCode.InternalServerError, errorBody("internal", "internal error (request ${call.callId})"))
         }
     }

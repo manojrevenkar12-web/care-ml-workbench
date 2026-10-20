@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Run a CI command; on failure, put the last lines of its output into one annotation.
+# Run a CI command; on failure, surface compiler errors, failed tests and the tail of the output
+# as one annotation, so the cause is visible on the run page without downloading logs.
 set -o pipefail
 out=$(mktemp)
 "$@" 2>&1 | tee "$out"
 status=$?
 if [ $status -ne 0 ]; then
-  msg=$(tail -n 60 "$out" | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
-  echo "::error title=$1 failed (exit $status)::$msg"
+  { grep -E '^e: |FAILED$| > .* FAILED|Exception|expected:|AssertionError' "$out" | head -n 40; echo '--- tail ---'; tail -n 25 "$out"; } \
+    | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}' > "$out.msg"
+  echo "::error title=$1 failed (exit $status)::$(cat "$out.msg")"
 fi
 exit $status

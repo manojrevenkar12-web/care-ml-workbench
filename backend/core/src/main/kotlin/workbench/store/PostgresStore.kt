@@ -175,7 +175,7 @@ class PostgresStore(private val ds: DataSource) : Store {
                 projectId, kind.name, now, user,
             )?.let { t ->
                 val leased = t.copy(status = TaskStatus.LEASED, assignee = user, leasedUntil = now.plus(lease))
-                c.prepareStatement("UPDATE tasks SET status = 'LEASED', assignee = ?, leased_until = ? WHERE id = ?").use { st -> bind(st, arrayOf(user, leased.leasedUntil, t.id)); st.executeUpdate() }
+                c.prepareStatement("UPDATE tasks SET status = 'LEASED', assignee = ?, leased_until = ? WHERE id = ?").use { st -> bind(st, arrayOf<Any?>(user, leased.leasedUntil, t.id)); st.executeUpdate() }
                 leased
             }
     }
@@ -202,7 +202,7 @@ class PostgresStore(private val ds: DataSource) : Store {
     override fun putSnapshot(s: Snapshot) = tx { c ->
         c.prepareStatement("INSERT INTO snapshots VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?::jsonb)").use { st ->
             val j = Codec.snapshot(s)
-            bind(st, arrayOf(s.id, s.projectId, s.version, s.createdBy, s.createdAt, s.manifestSha256, j["counts"].toString(), j["label_counts"].toString(), j["excluded"].toString()))
+            bind(st, arrayOf<Any?>(s.id, s.projectId, s.version, s.createdBy, s.createdAt, s.manifestSha256, j["counts"].toString(), j["label_counts"].toString(), j["excluded"].toString()))
             st.executeUpdate()
         }
         c.prepareStatement("INSERT INTO snapshot_examples VALUES (?, ?, ?::jsonb)").use { st ->
