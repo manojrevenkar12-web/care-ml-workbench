@@ -135,11 +135,11 @@ jobs:
         run: docker compose config --quiet
       - name: Build images
         run: |
-          docker build -f backend/Dockerfile --target api -t cmw-api .
-          docker build -f backend/Dockerfile --target etl -t cmw-etl .
-          docker build -f backend/Dockerfile --target dev -t cmw-api-dev .
-          docker build -t cmw-web frontend
-          docker build -t cmw-trainer trainer
+          .github/run.sh docker build --progress=plain -f backend/Dockerfile --target api -t cmw-api .
+          .github/run.sh docker build --progress=plain -f backend/Dockerfile --target etl -t cmw-etl .
+          .github/run.sh docker build --progress=plain -f backend/Dockerfile --target dev -t cmw-api-dev .
+          .github/run.sh docker build --progress=plain -t cmw-web frontend
+          .github/run.sh docker build --progress=plain -t cmw-trainer trainer
       - name: Smoke-test the web image headers
         run: |
           docker run -d --name web -p 8081:8080 -e API_UPSTREAM=http://127.0.0.1:9 cmw-web
