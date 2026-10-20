@@ -30,11 +30,20 @@ USER 10001
 ENTRYPOINT ["/app/bin/etl"]
 
 # --- API for docker compose: trains in-process with the Python trainer (TRAINER_MODE=local) ---
-FROM api AS dev
-USER root
-RUN apk add --no-cache python3 py3-pip
+# Debian-based so the scientific Python wheels install without compiling.
+FROM eclipse-temurin:21-jre AS dev
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip wget && rm -rf /var/lib/apt/lists/* && \
+    useradd --uid 10001 --create-home app
+COPY trainer/requirements.txt /tmp/requirements.txt
+RUN python3 -m pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
+COPY --from=runtime-base /otel /otel
+COPY --from=build /src/api/build/install/api /app
 COPY trainer/ /work/trainer/
-RUN python3 -m pip install --no-cache-dir --break-system-packages -r /work/trainer/requirements.txt
 RUN mkdir -p /work/build && chown -R 10001:10001 /work
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -javaagent:/otel/opentelemetry-javaagent.jar" \
+    OTEL_SERVICE_NAME=care-ml-workbench-api \
+    OTEL_LOGS_EXPORTER=otlp
 WORKDIR /work
 USER 10001
+EXPOSE 8080
+ENTRYPOINT ["/app/bin/api"]
