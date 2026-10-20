@@ -1,0 +1,21 @@
+# The API launches training Jobs in its own namespace and reads their pods' termination messages.
+# Nothing else: no secrets, no exec, no other namespaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: training-launcher
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api-training-launcher
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: training-launcher }
+subjects:
+  - { kind: ServiceAccount, name: api, namespace: ml-app }

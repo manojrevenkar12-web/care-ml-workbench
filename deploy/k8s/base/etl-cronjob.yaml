@@ -1,0 +1,58 @@
+# Nightly ingest of customer exports dropped into the inbox (S3 → EFS sync is done by the export job).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etl-ingest
+spec:
+  schedule: "17 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 7200
+      template:
+        metadata:
+          labels: { app: etl }
+        spec:
+          serviceAccountName: etl
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: etl
+              image: ghcr.io/manojrevenkar12-web/care-ml-workbench-etl:latest
+              args: ["ingest", "--input", "/inbox/records.jsonl", "--jdbc", "$(DATABASE_URL)"]
+              envFrom:
+                - configMapRef: { name: api-config }
+                - secretRef: { name: api-secrets }
+              env:
+                - { name: WORKBENCH_ENV, value: production }
+                - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://alloy.observability.svc:4318 }
+              resources:
+                requests: { cpu: 500m, memory: 1Gi }
+                limits: { memory: 2Gi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: inbox, mountPath: /inbox, readOnly: true }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - { name: inbox, persistentVolumeClaim: { claimName: ml-inbox } }
+            - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-inbox
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: efs-encrypted
+  resources:
+    requests:
+      storage: 20Gi

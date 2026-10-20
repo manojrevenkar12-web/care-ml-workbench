@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ml-app
+labels:
+  - pairs: { app.kubernetes.io/part-of: care-ml-workbench }
+resources:
+  - namespace.yaml
+  - serviceaccounts.yaml
+  - rbac.yaml
+  - storage.yaml
+  - api.yaml
+  - web.yaml
+  - etl-cronjob.yaml
+  - networkpolicies.yaml
+  - alerts.yaml

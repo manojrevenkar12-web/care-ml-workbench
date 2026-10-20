@@ -1,0 +1,27 @@
+# US region: only for tenants with a signed BAA (the API enforces this per tenant as well).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [../../base]
+configMapGenerator:
+  - name: api-config
+    literals:
+      - WORKBENCH_REGION=US
+      - OIDC_ISSUER=https://login.example-idp.com/realms/voize
+      - OIDC_JWKS_URL=https://login.example-idp.com/realms/voize/protocol/openid-connect/certs
+      - OIDC_AUDIENCE=care-ml-workbench
+      - OPENFGA_URL=http://openfga.openfga.svc:8080
+      - OPENFGA_STORE_ID=set-by-pipeline
+      - CORS_ORIGINS=https://ml.us.internal.example
+patches:
+  - target: { kind: ServiceAccount, name: api }
+    patch: |-
+      - { op: replace, path: /metadata/annotations/eks.amazonaws.com~1role-arn, value: "arn:aws:iam::222222222222:role/care-ml-workbench-us-api" }
+  - target: { kind: ServiceAccount, name: etl }
+    patch: |-
+      - { op: replace, path: /metadata/annotations/eks.amazonaws.com~1role-arn, value: "arn:aws:iam::222222222222:role/care-ml-workbench-us-etl" }
+  - target: { kind: Ingress, name: web }
+    patch: |-
+      - { op: replace, path: /spec/rules/0/host, value: ml.us.internal.example }
+  - target: { kind: Deployment, name: web }
+    patch: |-
+      - { op: replace, path: /spec/template/spec/containers/0/env/1/value, value: "https://login.example-idp.com" }

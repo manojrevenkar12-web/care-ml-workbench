@@ -1,0 +1,51 @@
+# Grafana-managed alert rules, provisioned. The same expressions are used as PrometheusRules in
+# deploy/k8s/base/alerts.yaml for the cluster.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: care-ml-workbench
+    folder: Care ML Workbench
+    interval: 1m
+    rules:
+      - uid: cmw-5xx
+        title: API error ratio above 2%
+        condition: C
+        for: 5m
+        labels: { severity: page }
+        annotations: { summary: "More than 2% of API requests fail with 5xx." }
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model: { expr: 'sum(rate(ktor_http_server_requests_seconds_count{status=~"5.."}[5m])) / sum(rate(ktor_http_server_requests_seconds_count[5m]))', refId: A }
+          - refId: C
+            datasourceUid: __expr__
+            model: { type: threshold, expression: A, refId: C, conditions: [{ evaluator: { type: gt, params: [0.02] } }] }
+      - uid: cmw-phi-reveals
+        title: Unusual number of original-record views
+        condition: C
+        for: 0m
+        labels: { severity: security }
+        annotations: { summary: "More than 20 break-glass PHI views in an hour. Check the audit log for the actors and reasons." }
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model: { expr: 'sum(increase(workbench_phi_reveals_total[1h]))', refId: A }
+          - refId: C
+            datasourceUid: __expr__
+            model: { type: threshold, expression: A, refId: C, conditions: [{ evaluator: { type: gt, params: [20] } }] }
+      - uid: cmw-rejections
+        title: Many annotations rejected for PHI or invalid spans
+        condition: C
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: "Annotators keep hitting validation; a guideline or UI problem is likely." }
+        data:
+          - refId: A
+            relativeTimeRange: { from: 1800, to: 0 }
+            datasourceUid: prometheus
+            model: { expr: 'sum(increase(workbench_annotations_rejected_total[30m])) / clamp_min(sum(increase(workbench_annotations_submitted_total[30m])), 1)', refId: A }
+          - refId: C
+            datasourceUid: __expr__
+            model: { type: threshold, expression: A, refId: C, conditions: [{ evaluator: { type: gt, params: [0.2] } }] }

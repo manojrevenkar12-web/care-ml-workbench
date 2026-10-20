@@ -47,6 +47,7 @@ object DemoSeed {
         projectId: String = "nord-doku",
         annotateShare: Double = 0.85,
         seed: Int = 5,
+        leaveForReview: Int = 0, // disagreements left open so the review screen has work in a demo
     ): Report {
         val report = pipeline.ingest(generated.asSequence().map { it.record.toString() to it.record }, "service:etl")
         val gold = generated.associateBy { IngestPipeline.itemIdFor(it.gold.tenant, it.gold.recordId) }
@@ -79,7 +80,8 @@ object DemoSeed {
             }
         }
         var reviewed = 0
-        while (true) {
+        val toReview = wb.store.tasks(projectId).count { it.kind == TaskKind.REVIEW && it.status == workbench.annotation.TaskStatus.OPEN } - leaveForReview
+        while (reviewed < toReview) {
             val view = wb.nextTask("user:rita", projectId, TaskKind.REVIEW) ?: break
             val (deidGold, entities) = deidentifiedGold(gold.getValue(view.item.id), deidFor)
             wb.adjudicate("user:rita", view.task.id, deidGold, entities)

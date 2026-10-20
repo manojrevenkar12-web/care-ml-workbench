@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: api } }
+  strategy: { rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  template:
+    metadata:
+      labels: { app: api }
+    spec:
+      serviceAccountName: api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: topology.kubernetes.io/zone, whenUnsatisfiable: ScheduleAnyway, labelSelector: { matchLabels: { app: api } } }
+      containers:
+        - name: api
+          image: ghcr.io/manojrevenkar12-web/care-ml-workbench-api:latest
+          ports: [{ name: http, containerPort: 8080 }]
+          env:
+            - { name: WORKBENCH_ENV, value: production }
+            - { name: TRAINER_MODE, value: kubernetes }
+            - { name: TRAINER_IMAGE, value: ghcr.io/manojrevenkar12-web/care-ml-workbench-trainer:latest }
+            - { name: K8S_NAMESPACE, valueFrom: { fieldRef: { fieldPath: metadata.namespace } } }
+            - { name: ARTIFACT_DIR, value: /artifacts }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://alloy.observability.svc:4318 }
+            - { name: OTEL_RESOURCE_ATTRIBUTES, value: deployment.environment=production }
+          envFrom:
+            - configMapRef: { name: api-config }   # region, OIDC issuer/JWKS, OpenFGA store, CORS origins
+            - secretRef: { name: api-secrets }     # DATABASE_*, WORKBENCH_MASTER_KEY, WORKBENCH_DEID_KEY_* (External Secrets from AWS Secrets Manager)
+          resources:
+            requests: { cpu: 250m, memory: 768Mi }
+            limits: { memory: 1536Mi }
+          readinessProbe: { httpGet: { path: /ready, port: http }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 30, periodSeconds: 10 }
+          startupProbe: { httpGet: { path: /health, port: http }, failureThreshold: 30, periodSeconds: 2 }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: artifacts, mountPath: /artifacts }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: artifacts, persistentVolumeClaim: { claimName: ml-artifacts } }
+        - { name: tmp, emptyDir: { sizeLimit: 256Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector: { app: api }
+  ports: [{ name: http, port: 8080, targetPort: http }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: api } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: api }
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }

@@ -139,6 +139,7 @@ object Codec {
         put("status", r.status)
         put("wer", num(r.wer))
         put("labels", JsonArray(r.labels.sorted().map { JsonPrimitive(it.name) }))
+        put("reference", r.reference?.let { buildJsonObject { put("transcript", it.transcript); put("entities", spans(it.entities)); put("annotator", it.annotator) } } ?: JsonNull)
     }
 
     fun agreement(a: Agreement.Result) = buildJsonObject {

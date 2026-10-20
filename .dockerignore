@@ -1,0 +1,8 @@
+**/build
+**/.gradle
+frontend
+**/__pycache__
+*.jsonl
+data
+artifacts
+.git

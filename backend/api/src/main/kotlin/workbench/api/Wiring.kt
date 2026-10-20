@@ -96,7 +96,7 @@ object Wiring {
             // the demo team works through the service with local grants (identical to the OpenFGA tuples)
             val demoWb = Workbench(store, local, audit, vault, null, artifacts.resolve("datasets"), ::loadTagger)
             val deid = deidKeys()
-            val r = DemoSeed.run(demoWb, IngestPipeline(store, vault, deid, audit, cfg.region), SyntheticExport().generate(SyntheticExport.DEFAULT_TENANTS + SyntheticExport.US_TENANT, 300), deid)
+            val r = DemoSeed.run(demoWb, IngestPipeline(store, vault, deid, audit, cfg.region), SyntheticExport().generate(SyntheticExport.DEFAULT_TENANTS + SyntheticExport.US_TENANT, 300), deid, leaveForReview = 6)
             log.info("demo data seeded: {}", r)
         }
         return App(cfg, wb, store, ds)

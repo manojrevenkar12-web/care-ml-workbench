@@ -1,0 +1,12 @@
+# De-identified datasets and model artifacts, shared by the API and training Jobs (EFS, encrypted
+# with the region's KMS key — see deploy/terraform). Raw PHI never lands here; it stays sealed in PostgreSQL.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-artifacts
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: efs-encrypted
+  resources:
+    requests:
+      storage: 50Gi

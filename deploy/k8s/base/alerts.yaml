@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: care-ml-workbench
+spec:
+  groups:
+    - name: care-ml-workbench
+      rules:
+        - alert: WorkbenchApiErrorRatio
+          expr: sum(rate(ktor_http_server_requests_seconds_count{status=~"5.."}[5m])) / sum(rate(ktor_http_server_requests_seconds_count[5m])) > 0.02
+          for: 5m
+          labels: { severity: page }
+          annotations: { summary: More than 2% of API requests fail with 5xx. }
+        - alert: WorkbenchPhiRevealSpike
+          expr: sum(increase(workbench_phi_reveals_total[1h])) > 20
+          labels: { severity: security }
+          annotations: { summary: More than 20 break-glass PHI views in an hour; review the audit log. }
+        - alert: WorkbenchTrainingJobFailed
+          expr: sum(increase(kube_job_status_failed{namespace="ml-app", job_name=~"train-.*"}[30m])) > 0
+          labels: { severity: ticket }
+          annotations: { summary: A training job failed; see the job's message on the Training page. }

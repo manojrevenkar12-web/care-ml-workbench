@@ -1,0 +1,12 @@
+prometheus.scrape "api" {
+  targets         = [{"__address__" = "api:8080", "job" = "care-ml-workbench-api"}]
+  metrics_path    = "/metrics"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.lgtm.receiver]
+}
+
+prometheus.remote_write "lgtm" {
+  endpoint {
+    url = "http://lgtm:9090/api/v1/write"
+  }
+}

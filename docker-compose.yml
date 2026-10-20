@@ -1,0 +1,78 @@
+# Local stack: PostgreSQL, OpenFGA, API (with in-process trainer), web, and Grafana LGTM
+# (Loki, Grafana, Tempo, Mimir/Prometheus) receiving OTLP from the API's OpenTelemetry agent.
+#   docker compose up --build      then open http://localhost:8081 (web) and http://localhost:3000 (Grafana)
+# Everything here is synthetic demo data. The development keys below must never be used with real data.
+name: care-ml-workbench
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: workbench
+      POSTGRES_USER: workbench
+      POSTGRES_PASSWORD: workbench-dev
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workbench -d workbench"]
+      interval: 3s
+      retries: 20
+
+  openfga:
+    image: openfga/openfga:v1.21.0
+    command: run
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:8081"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile, target: dev }
+    depends_on:
+      postgres: { condition: service_healthy }
+      openfga: { condition: service_healthy }
+    environment:
+      WORKBENCH_ENV: development
+      WORKBENCH_REGION: EU
+      DATABASE_URL: jdbc:postgresql://postgres:5432/workbench
+      DATABASE_USER: workbench
+      DATABASE_PASSWORD: workbench-dev
+      OPENFGA_URL: http://openfga:8080
+      DEV_AUTH: "true"
+      SEED_DEMO: "true"
+      TRAINER_MODE: local
+      TRAINER_COMMAND: python3 trainer/train.py
+      ARTIFACT_DIR: /work/build/artifacts
+      CORS_ORIGINS: http://localhost:8081
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local
+    ports: ["8080:8080"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/ready"]
+      interval: 5s
+      retries: 30
+
+  web:
+    build: { context: frontend }
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      API_UPSTREAM: http://api:8080
+    ports: ["8081:8080"]
+
+  # scrapes the API's Prometheus endpoint (business counters) and remote-writes into LGTM
+  alloy:
+    image: grafana/alloy:v1.5.1
+    command: run /etc/alloy/config.alloy
+    volumes: [./deploy/compose/config.alloy:/etc/alloy/config.alloy:ro]
+    depends_on: [api, lgtm]
+
+  lgtm:
+    image: grafana/otel-lgtm:0.8.1
+    ports: ["3000:3000"]
+    volumes:
+      - ./deploy/compose/grafana/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/workbench.yaml:ro
+      - ./deploy/compose/grafana/dashboards:/var/lib/workbench-dashboards:ro
+      - ./deploy/compose/grafana/alerting:/otel-lgtm/grafana/conf/provisioning/alerting:ro
+
+volumes:
+  pgdata:

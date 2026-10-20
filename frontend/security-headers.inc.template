@@ -1,0 +1,6 @@
+# Included in every location: nginx drops inherited add_header directives when a location adds its own.
+add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${CSP_CONNECT_EXTRA}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
+add_header X-Content-Type-Options nosniff always;
+add_header Referrer-Policy no-referrer always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;

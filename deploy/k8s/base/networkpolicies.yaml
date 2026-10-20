@@ -1,0 +1,70 @@
+# Default deny, then allow only the flows the app needs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+# Training pods: no ingress, no egress at all (not even DNS). They read and write only the volume.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trainer-isolated
+spec:
+  podSelector: { matchLabels: { egress: none } }
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web
+spec:
+  podSelector: { matchLabels: { app: web } }
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - ports: [{ port: 8080 }] # from the ALB (target-type ip)
+  egress:
+    - to: [{ podSelector: { matchLabels: { app: api } } }]
+      ports: [{ port: 8080 }]
+    - to: [{ namespaceSelector: {}, podSelector: { matchLabels: { k8s-app: kube-dns } } }]
+      ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api
+spec:
+  podSelector: { matchLabels: { app: api } }
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: web } } }]
+      ports: [{ port: 8080 }]
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: observability } } }]
+      ports: [{ port: 8080 }] # /metrics scrape
+  egress:
+    - to: [{ namespaceSelector: {}, podSelector: { matchLabels: { k8s-app: kube-dns } } }]
+      ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: openfga } } }]
+      ports: [{ port: 8080 }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: observability } } }]
+      ports: [{ port: 4318 }]
+    - to: [{ ipBlock: { cidr: 10.0.0.0/16 } }] # RDS (5432), EFS (2049), Kubernetes API (443) inside the VPC
+      ports: [{ port: 5432 }, { port: 2049 }, { port: 443 }]
+    - ports: [{ port: 443 }] # OIDC JWKS and AWS KMS / STS endpoints (VPC endpoints in production)
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: etl
+spec:
+  podSelector: { matchLabels: { app: etl } }
+  policyTypes: ["Ingress", "Egress"]
+  egress:
+    - to: [{ namespaceSelector: {}, podSelector: { matchLabels: { k8s-app: kube-dns } } }]
+      ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+    - to: [{ ipBlock: { cidr: 10.0.0.0/16 } }]
+      ports: [{ port: 5432 }, { port: 2049 }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: observability } } }]
+      ports: [{ port: 4318 }]

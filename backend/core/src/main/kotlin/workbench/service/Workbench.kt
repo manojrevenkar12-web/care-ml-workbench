@@ -57,6 +57,7 @@ data class ExploreRow(
     val status: String, // "unlabelled" | "in progress" | "needs review" | "done"
     val wer: Double?, // primary ASR vs reference, once a reference exists
     val labels: Set<Label>,
+    val reference: Annotation? = null, // the transcript and labels that go into training
 )
 
 data class ProjectStats(
@@ -165,7 +166,7 @@ class Workbench(
                 a.size >= assignment.annotationsNeeded(item) -> "needs review"
                 else -> "in progress"
             }
-            ExploreRow(item, a.size, st, ref?.let { Wer.errors(it.transcript, item.asrText).rate }, (ref?.entities ?: a.flatMap { it.entities }).map { it.label }.toSet())
+            ExploreRow(item, a.size, st, ref?.let { Wer.errors(it.transcript, item.asrText).rate }, (ref?.entities ?: a.flatMap { it.entities }).map { it.label }.toSet(), ref)
         }.filter { r ->
             (facility == null || r.item.facilityId == facility) && (label == null || label in r.labels) && (status == null || r.status == status) &&
                 (query.isNullOrBlank() || r.item.asrText.contains(query, ignoreCase = true))

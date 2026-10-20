@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: care-ml-workbench
+    folder: Care ML Workbench
+    type: file
+    options:
+      path: /var/lib/workbench-dashboards
